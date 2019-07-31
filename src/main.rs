@@ -34,7 +34,69 @@ struct Entity<'a> {
     texture: Texture<'a>,
 }
 
-fn run (playerImg: &Path, bulletImg: &Path) -> Result<(), String> {
+struct App {
+    up: u8,
+    down: u8,
+    left: u8,
+    right: u8,
+    fire: u8,
+}
+
+fn init() -> App {
+    App {
+        up: 0,
+        down: 0,
+        left: 0,
+        right: 0,
+        fire: 0,
+    }
+}
+
+fn view(app: &App) {
+}
+
+enum Msg {
+    KeyDown(Keycode),
+    KeyUp(Keycode),
+}
+
+fn update(app: &mut App, msg: &Msg) {
+    match msg {
+        Msg::KeyDown (Keycode::Up) => {
+            app.up = 1;
+        },
+        Msg::KeyDown (Keycode::Down) => {
+            app.down = 1;
+        },
+        Msg::KeyDown (Keycode::Left) => {
+            app.left = 1;
+        },
+        Msg::KeyDown (Keycode::Right) => {
+            app.right = 1;
+        },
+        Msg::KeyDown (Keycode::Space) => {
+            app.fire = 1;
+        },
+        Msg::KeyUp (Keycode::Up) => {
+            app.up = 0;
+        },
+        Msg::KeyUp (Keycode::Down) => {
+            app.down = 0;
+        },
+        Msg::KeyUp (Keycode::Left) => {
+            app.left = 0;
+        },
+        Msg::KeyUp (Keycode::Right) => {
+            app.right = 0;
+        },
+        Msg::KeyUp (Keycode::Space) => {
+            app.fire = 0;
+        },
+        _ => {}
+    }
+}
+
+fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let _image_context = sdl2::image::init(InitFlag::PNG | InitFlag::JPG)?;
@@ -50,13 +112,15 @@ fn run (playerImg: &Path, bulletImg: &Path) -> Result<(), String> {
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
+    let mut app = init();
+
     let mut player = Entity {
         x: 100,
         y: 100,
         dx: 4,
         dy: 4,
         health: 0,
-        texture: texture_creator.load_texture(playerImg)?,
+        texture: texture_creator.load_texture(player_img)?,
     };
     let mut bullet = Entity {
         x: 0,
@@ -64,13 +128,8 @@ fn run (playerImg: &Path, bulletImg: &Path) -> Result<(), String> {
         dx: 16,
         dy: 0,
         health: 0,
-        texture: texture_creator.load_texture(bulletImg)?,
+        texture: texture_creator.load_texture(bullet_img)?,
     };
-    let mut up = 0;
-    let mut down = 0;
-    let mut left = 0;
-    let mut right = 0;
-    let mut fire = 0;
     let mut event_pump = sdl_context.event_pump()?;
     canvas.set_draw_color(Color::RGB(98, 128, 255));
 
@@ -83,54 +142,30 @@ fn run (playerImg: &Path, bulletImg: &Path) -> Result<(), String> {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
-                Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
-                    up = 1;
+                Event::KeyDown { keycode: Some(code), .. } => {
+                    update(&mut app, &Msg::KeyDown(code));
                 },
-                Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
-                    down = 1;
-                },
-                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
-                    left = 1;
-                },
-                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
-                    right = 1;
-                },
-                Event::KeyDown { keycode: Some(Keycode::LCtrl), .. } => {
-                    fire = 1;
-                },
-                Event::KeyUp { keycode: Some(Keycode::Up), .. } => {
-                    up = 0;
-                },
-                Event::KeyUp { keycode: Some(Keycode::Down), .. } => {
-                    down = 0;
-                },
-                Event::KeyUp { keycode: Some(Keycode::Left), .. } => {
-                    left = 0;
-                },
-                Event::KeyUp { keycode: Some(Keycode::Right), .. } => {
-                    right = 0;
-                },
-                Event::KeyUp { keycode: Some(Keycode::LCtrl), .. } => {
-                    fire = 0;
+                Event::KeyUp { keycode: Some(code), .. } => {
+                    update(&mut app, &Msg::KeyUp(code));
                 },
                 _ => {}
             }
         }
 
-        if up == 1 {
+        if app.up == 1 {
             player.y = player.y - player.dy;
         }
-        if down == 1 {
+        if app.down == 1 {
             player.y = player.y + player.dy;
         }
-        if left == 1 {
+        if app.left == 1 {
             player.x = player.x - player.dx;
         }
-        if right == 1 {
+        if app.right == 1 {
             player.x = player.x + player.dx;
         }
 
-        if fire == 1 && bullet.health == 0 {
+        if app.fire == 1 && bullet.health == 0 {
             bullet.health = 1;
             bullet.x = player.x;
             bullet.y = player.y + 10;
@@ -142,20 +177,20 @@ fn run (playerImg: &Path, bulletImg: &Path) -> Result<(), String> {
             bullet.health = 0;
         }
 
-        let playerDest = Rect::new(
+        let player_dest = Rect::new(
             player.x,
             player.y,
             player.texture.query().width,
             player.texture.query().height);
-        canvas.copy(&player.texture, None, Some(playerDest))?;
+        canvas.copy(&player.texture, None, Some(player_dest))?;
 
         if bullet.health == 1 {
-            let bulletDest = Rect::new(
+            let bullet_dest = Rect::new(
                 bullet.x,
                 bullet.y,
                 bullet.texture.query().width,
                 bullet.texture.query().height);
-            canvas.copy(&bullet.texture, None, Some(bulletDest))?;
+            canvas.copy(&bullet.texture, None, Some(bullet_dest))?;
         }
 
         canvas.present();
