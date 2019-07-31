@@ -13,10 +13,13 @@ use std::time::Duration;
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
 
-    if args.len() < 2 {
+    if args.len() < 3 {
         println!("Usage: cargo run /path/to/image.(png|jpg)");
     } else {
-        run(Path::new(&args[1]))?;
+        run(
+            Path::new(&args[1]),
+            Path::new(&args[2]),
+        )?;
     }
 
     Ok(())
@@ -31,7 +34,7 @@ struct Entity<'a> {
     texture: Texture<'a>,
 }
 
-fn run (png: &Path) -> Result<(), String> {
+fn run (playerImg: &Path, bulletImg: &Path) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let _image_context = sdl2::image::init(InitFlag::PNG | InitFlag::JPG)?;
@@ -47,36 +50,32 @@ fn run (png: &Path) -> Result<(), String> {
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
-    canvas.set_draw_color(Color::RGB(0, 255, 255));
-    canvas.clear();
-    canvas.present();
-
     let mut player = Entity {
         x: 100,
         y: 100,
         dx: 4,
         dy: 4,
         health: 0,
-        texture: texture_creator.load_texture(png)?,
+        texture: texture_creator.load_texture(playerImg)?,
+    };
+    let mut bullet = Entity {
+        x: 0,
+        y: 0,
+        dx: 16,
+        dy: 0,
+        health: 0,
+        texture: texture_creator.load_texture(bulletImg)?,
     };
     let mut up = 0;
     let mut down = 0;
     let mut left = 0;
     let mut right = 0;
+    let mut fire = 0;
     let mut event_pump = sdl_context.event_pump()?;
-    // let mut i = 0;
-    'running: loop {
-        /* i = (i + 1) % 255; */
-        /* canvas.set_draw_color(Color::RGB(i, 64, 255 - i)); */
-        canvas.set_draw_color(Color::RGB(98, 128, 255));
-        canvas.clear();
+    canvas.set_draw_color(Color::RGB(98, 128, 255));
 
-        let dest = Rect::new(
-            player.x,
-            player.y,
-            player.texture.query().width,
-            player.texture.query().height);
-        canvas.copy(&player.texture, None, Some(dest))?;
+    'running: loop {
+        canvas.clear();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -96,6 +95,9 @@ fn run (png: &Path) -> Result<(), String> {
                 Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
                     right = 1;
                 },
+                Event::KeyDown { keycode: Some(Keycode::LCtrl), .. } => {
+                    fire = 1;
+                },
                 Event::KeyUp { keycode: Some(Keycode::Up), .. } => {
                     up = 0;
                 },
@@ -107,6 +109,9 @@ fn run (png: &Path) -> Result<(), String> {
                 },
                 Event::KeyUp { keycode: Some(Keycode::Right), .. } => {
                     right = 0;
+                },
+                Event::KeyUp { keycode: Some(Keycode::LCtrl), .. } => {
+                    fire = 0;
                 },
                 _ => {}
             }
@@ -125,9 +130,48 @@ fn run (png: &Path) -> Result<(), String> {
             player.x = player.x + player.dx;
         }
 
+        if fire == 1 && bullet.health == 0 {
+            bullet.health = 1;
+            bullet.x = player.x;
+            bullet.y = player.y + 10;
+        }
+        if bullet.health == 1 {
+            bullet.x = bullet.x + bullet.dx;
+        }
+        if bullet.x > 800 {
+            bullet.health = 0;
+        }
+
+        let playerDest = Rect::new(
+            player.x,
+            player.y,
+            player.texture.query().width,
+            player.texture.query().height);
+        canvas.copy(&player.texture, None, Some(playerDest))?;
+
+        if bullet.health == 1 {
+            let bulletDest = Rect::new(
+                bullet.x,
+                bullet.y,
+                bullet.texture.query().width,
+                bullet.texture.query().height);
+            canvas.copy(&bullet.texture, None, Some(bulletDest))?;
+        }
+
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
     Ok(())
 }
+
+/* fn make_bullet(player: &Entity) -> Entity { */
+    // Entity {
+        // x: player.x,
+        // y: player.y,
+        // dx: 16,
+        // dy: 0,
+        // health: 1,
+
+    // }
+/* } */
