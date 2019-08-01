@@ -8,6 +8,7 @@ use sdl2::video::WindowContext;
 use std::env;
 use std::path::Path;
 use std::time::Duration;
+use std::collections::HashMap;
 
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
@@ -34,22 +35,14 @@ struct Entity<'a> {
 }
 
 struct App<'a> {
-    up: u8,
-    down: u8,
-    left: u8,
-    right: u8,
-    fire: u8,
+    keyboard: HashMap<Keycode, bool>,
     player: Entity<'a>,
     bullet: Entity<'a>,
 }
 
 fn init<'a>(texture_creator: &'a TextureCreator<WindowContext>, player_img: &Path, bullet_img: &Path) -> Result<App<'a>, String> {
     Ok(App {
-        up: 0,
-        down: 0,
-        left: 0,
-        right: 0,
-        fire: 0,
+        keyboard: HashMap::new(),
         player: Entity {
             x: 100,
             y: 100,
@@ -95,39 +88,14 @@ enum Msg {
     KeyUp(Keycode),
 }
 
-fn update(app: &mut App, msg: &Msg) {
+fn update(app: &mut App, msg: Msg) {
     match msg {
-        Msg::KeyDown (Keycode::Up) => {
-            app.up = 1;
+        Msg::KeyDown(code) => {
+            app.keyboard.insert(code, true);
         },
-        Msg::KeyDown (Keycode::Down) => {
-            app.down = 1;
+        Msg::KeyUp(code) => {
+            app.keyboard.insert(code, false);
         },
-        Msg::KeyDown (Keycode::Left) => {
-            app.left = 1;
-        },
-        Msg::KeyDown (Keycode::Right) => {
-            app.right = 1;
-        },
-        Msg::KeyDown (Keycode::Space) => {
-            app.fire = 1;
-        },
-        Msg::KeyUp (Keycode::Up) => {
-            app.up = 0;
-        },
-        Msg::KeyUp (Keycode::Down) => {
-            app.down = 0;
-        },
-        Msg::KeyUp (Keycode::Left) => {
-            app.left = 0;
-        },
-        Msg::KeyUp (Keycode::Right) => {
-            app.right = 0;
-        },
-        Msg::KeyUp (Keycode::Space) => {
-            app.fire = 0;
-        },
-        _ => {}
     }
 }
 
@@ -162,29 +130,28 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(code), .. } => {
-                    update(&mut app, &Msg::KeyDown(code));
+                    update(&mut app, Msg::KeyDown(code));
                 },
                 Event::KeyUp { keycode: Some(code), .. } => {
-                    update(&mut app, &Msg::KeyUp(code));
+                    update(&mut app, Msg::KeyUp(code));
                 },
                 _ => {}
             }
         }
 
-        if app.up == 1 {
+        if *app.keyboard.get(&Keycode::Up).unwrap_or(&false) {
             app.player.y = app.player.y - app.player.dy;
         }
-        if app.down == 1 {
+        if *app.keyboard.get(&Keycode::Down).unwrap_or(&false) {
             app.player.y = app.player.y + app.player.dy;
         }
-        if app.left == 1 {
+        if *app.keyboard.get(&Keycode::Left).unwrap_or(&false) {
             app.player.x = app.player.x - app.player.dx;
         }
-        if app.right == 1 {
+        if *app.keyboard.get(&Keycode::Right).unwrap_or(&false) {
             app.player.x = app.player.x + app.player.dx;
         }
-
-        if app.fire == 1 && app.bullet.health == 0 {
+        if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && app.bullet.health == 0 {
             app.bullet.health = 1;
             app.bullet.x = app.player.x;
             app.bullet.y = app.player.y + 10;
