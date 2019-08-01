@@ -25,36 +25,33 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-struct Entity<'a, 'b> {
+struct Entity<'a> {
     x: i32,
     y: i32,
     dx: i32,
     dy: i32,
-    health: u8,
     reload: u8,
-    texture: &'a Texture<'b>,
+    texture: &'a Texture<'a>,
 }
 
-fn fire_bullet<'a, 'b>(texture: &'a Texture<'b>, player: &Entity) -> Entity<'a, 'b> {
+fn fire_bullet<'a>(texture: &'a Texture<'a>, player: &Entity) -> Entity<'a> {
     Entity {
         x: player.x,
-        // y: player.y + ((player.texture.query().height - texture.query().height) / 2) as i32,
         y: player.y,
         dx: 16,
         dy: 0,
-        health: 1,
         reload: 0,
         texture: texture,
     }
 }
 
-struct App<'a, 'b> {
+struct App<'a> {
     keyboard: HashMap<Keycode, bool>,
-    player: Entity<'a, 'b>,
-    bullets: Vec<Entity<'a, 'b>>,
+    player: Entity<'a>,
+    bullets: Vec<Entity<'a>>,
 }
 
-fn init<'a, 'b>(texture: &'a Texture<'b>) -> App<'a, 'b> {
+fn init<'a>(texture: &'a Texture<'a>) -> App<'a> {
     App {
         keyboard: HashMap::new(),
         player: Entity {
@@ -62,7 +59,6 @@ fn init<'a, 'b>(texture: &'a Texture<'b>) -> App<'a, 'b> {
             y: (texture.query().width / 2) as i32,
             dx: 4,
             dy: 4,
-            health: 0,
             reload: 0,
             texture: texture,
         },
