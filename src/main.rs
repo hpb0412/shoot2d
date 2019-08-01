@@ -37,8 +37,9 @@ struct Entity<'a, 'b> {
 
 fn fire_bullet<'a, 'b>(texture: &'a Texture<'b>, player: &Entity) -> Entity<'a, 'b> {
     Entity {
-        x: player.x + 20,
-        y: player.y + ((player.texture.query().height - texture.query().height) / 2) as i32,
+        x: player.x,
+        // y: player.y + ((player.texture.query().height - texture.query().height) / 2) as i32,
+        y: player.y,
         dx: 16,
         dy: 0,
         health: 1,
@@ -57,8 +58,8 @@ fn init<'a, 'b>(texture: &'a Texture<'b>) -> App<'a, 'b> {
     App {
         keyboard: HashMap::new(),
         player: Entity {
-            x: 100,
-            y: 100,
+            x: (texture.query().width / 2) as i32,
+            y: (texture.query().width / 2) as i32,
             dx: 4,
             dy: 4,
             health: 0,
@@ -71,16 +72,16 @@ fn init<'a, 'b>(texture: &'a Texture<'b>) -> App<'a, 'b> {
 
 fn render(canvas: &mut WindowCanvas, app: &App) -> Result<(), String> {
     let player_dest = Rect::new(
-        app.player.x,
-        app.player.y,
+        app.player.x - (app.player.texture.query().width / 2) as i32,
+        app.player.y - (app.player.texture.query().height / 2) as i32,
         app.player.texture.query().width,
         app.player.texture.query().height);
     canvas.copy(&app.player.texture, None, Some(player_dest))?;
 
     for bullet in &app.bullets {
         let bullet_dest = Rect::new(
-            bullet.x,
-            bullet.y,
+            bullet.x - (bullet.texture.query().width / 2) as i32,
+            bullet.y - (bullet.texture.query().height / 2) as i32,
             bullet.texture.query().width,
             bullet.texture.query().height);
         canvas.copy(&bullet.texture, None, Some(bullet_dest))?;
