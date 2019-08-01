@@ -1,11 +1,9 @@
-use sdl2;
-
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::image::{LoadTexture, InitFlag};
 use sdl2::rect::Rect;
-use sdl2::render::Texture;
+use sdl2::render::{Texture, WindowCanvas};
 use std::env;
 use std::path::Path;
 use std::time::Duration;
@@ -52,7 +50,25 @@ fn init() -> App {
     }
 }
 
-fn view(app: &App) {
+fn render(canvas: &mut WindowCanvas, app: &App, player: &Entity, bullet: &Entity) -> Result<(), String> {
+    let player_dest = Rect::new(
+        player.x,
+        player.y,
+        player.texture.query().width,
+        player.texture.query().height);
+    canvas.copy(&player.texture, None, Some(player_dest))?;
+
+    if bullet.health == 1 {
+        let bullet_dest = Rect::new(
+            bullet.x,
+            bullet.y,
+            bullet.texture.query().width,
+            bullet.texture.query().height);
+        canvas.copy(&bullet.texture, None, Some(bullet_dest))?;
+    }
+
+    canvas.present();
+    Ok(())
 }
 
 enum Msg {
@@ -177,36 +193,10 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
             bullet.health = 0;
         }
 
-        let player_dest = Rect::new(
-            player.x,
-            player.y,
-            player.texture.query().width,
-            player.texture.query().height);
-        canvas.copy(&player.texture, None, Some(player_dest))?;
-
-        if bullet.health == 1 {
-            let bullet_dest = Rect::new(
-                bullet.x,
-                bullet.y,
-                bullet.texture.query().width,
-                bullet.texture.query().height);
-            canvas.copy(&bullet.texture, None, Some(bullet_dest))?;
-        }
-
-        canvas.present();
+        render(&mut canvas, &app, &player, &bullet)?;
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
     Ok(())
 }
 
-/* fn make_bullet(player: &Entity) -> Entity { */
-    // Entity {
-        // x: player.x,
-        // y: player.y,
-        // dx: 16,
-        // dy: 0,
-        // health: 1,
-
-    // }
-/* } */
