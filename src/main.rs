@@ -3,12 +3,12 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::image::{LoadTexture, InitFlag};
 use sdl2::rect::Rect;
-use sdl2::render::{Texture, TextureCreator, WindowCanvas};
-use sdl2::video::WindowContext;
+use sdl2::render::{Texture, WindowCanvas};
 use std::env;
 use std::path::Path;
 use std::time::Duration;
 use std::collections::HashMap;
+use std::vec::Vec;
 
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
@@ -25,23 +25,36 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-struct Entity<'a> {
+struct Entity<'a, 'b> {
     x: i32,
     y: i32,
     dx: i32,
     dy: i32,
     health: u8,
-    texture: Texture<'a>,
+    reload: u8,
+    texture: &'a Texture<'b>,
 }
 
-struct App<'a> {
+fn fire_bullet<'a, 'b>(texture: &'a Texture<'b>, player: &Entity) -> Entity<'a, 'b> {
+    Entity {
+        x: player.x + 20,
+        y: player.y + ((player.texture.query().height - texture.query().height) / 2) as i32,
+        dx: 16,
+        dy: 0,
+        health: 1,
+        reload: 0,
+        texture: texture,
+    }
+}
+
+struct App<'a, 'b> {
     keyboard: HashMap<Keycode, bool>,
-    player: Entity<'a>,
-    bullet: Entity<'a>,
+    player: Entity<'a, 'b>,
+    bullets: Vec<Entity<'a, 'b>>,
 }
 
-fn init<'a>(texture_creator: &'a TextureCreator<WindowContext>, player_img: &Path, bullet_img: &Path) -> Result<App<'a>, String> {
-    Ok(App {
+fn init<'a, 'b>(texture: &'a Texture<'b>) -> App<'a, 'b> {
+    App {
         keyboard: HashMap::new(),
         player: Entity {
             x: 100,
@@ -49,17 +62,11 @@ fn init<'a>(texture_creator: &'a TextureCreator<WindowContext>, player_img: &Pat
             dx: 4,
             dy: 4,
             health: 0,
-            texture: texture_creator.load_texture(player_img)?,
+            reload: 0,
+            texture: texture,
         },
-        bullet: Entity {
-            x: 0,
-            y: 0,
-            dx: 16,
-            dy: 0,
-            health: 0,
-            texture: texture_creator.load_texture(bullet_img)?,
-        },
-    })
+        bullets: Vec::new(),
+    }
 }
 
 fn render(canvas: &mut WindowCanvas, app: &App) -> Result<(), String> {
@@ -70,13 +77,13 @@ fn render(canvas: &mut WindowCanvas, app: &App) -> Result<(), String> {
         app.player.texture.query().height);
     canvas.copy(&app.player.texture, None, Some(player_dest))?;
 
-    if app.bullet.health == 1 {
+    for bullet in &app.bullets {
         let bullet_dest = Rect::new(
-            app.bullet.x,
-            app.bullet.y,
-            app.bullet.texture.query().width,
-            app.bullet.texture.query().height);
-        canvas.copy(&app.bullet.texture, None, Some(bullet_dest))?;
+            bullet.x,
+            bullet.y,
+            bullet.texture.query().width,
+            bullet.texture.query().height);
+        canvas.copy(&bullet.texture, None, Some(bullet_dest))?;
     }
 
     canvas.present();
@@ -114,8 +121,10 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
 
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
+    let player_texture = texture_creator.load_texture(player_img)?;
+    let bullet_texture = texture_creator.load_texture(bullet_img)?;
 
-    let mut app = init(&texture_creator, player_img, bullet_img)?;
+    let mut app = init(&player_texture);
 
     let mut event_pump = sdl_context.event_pump()?;
     canvas.set_draw_color(Color::RGB(98, 128, 255));
@@ -139,6 +148,10 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
             }
         }
 
+        if app.player.reload > 0 {
+            app.player.reload -= 1;
+        }
+
         if *app.keyboard.get(&Keycode::Up).unwrap_or(&false) {
             app.player.y = app.player.y - app.player.dy;
         }
@@ -151,18 +164,16 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
         if *app.keyboard.get(&Keycode::Right).unwrap_or(&false) {
             app.player.x = app.player.x + app.player.dx;
         }
-        if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && app.bullet.health == 0 {
-            app.bullet.health = 1;
-            app.bullet.x = app.player.x;
-            app.bullet.y = app.player.y + 10;
-        }
-        if app.bullet.health == 1 {
-            app.bullet.x = app.bullet.x + app.bullet.dx;
-        }
-        if app.bullet.x > 800 {
-            app.bullet.health = 0;
+        if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && app.player.reload == 0 {
+            app.player.reload = 8;
+            app.bullets.push(fire_bullet(&bullet_texture, &app.player));
         }
 
+        for bullet in &mut app.bullets {
+            bullet.x += bullet.dx;
+            bullet.y += bullet.dy;
+        }
+        app.bullets.retain(|bullet| bullet.x <= 800);
         render(&mut canvas, &app)?;
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
