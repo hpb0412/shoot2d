@@ -9,6 +9,7 @@ use std::path::Path;
 use std::time::Duration;
 use std::collections::HashMap;
 use std::vec::Vec;
+use rand::Rng;
 
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
@@ -19,6 +20,7 @@ fn main() -> Result<(), String> {
         run(
             Path::new(&args[1]),
             Path::new(&args[2]),
+            Path::new(&args[3]),
         )?;
     }
 
@@ -45,9 +47,22 @@ fn fire_bullet<'a>(texture: &'a Texture<'a>, player: &Entity) -> Entity<'a> {
     }
 }
 
+fn spawn_enemy<'a>(texture: &'a Texture<'a>) -> Entity<'a> {
+    Entity {
+        x: rand::thread_rng().gen_range(500, 700),
+        y: rand::thread_rng().gen_range(100, 500),
+        dx: 0,
+        dy: 0,
+        reload: 0,
+        texture: texture,
+    }
+}
+
 struct Stage<'a> {
     player: Entity<'a>,
     bullets: Vec<Entity<'a>>,
+    enemies: Vec<Entity<'a>>,
+    spawn: u8,
 }
 
 fn init_stage<'a>(texture: &'a Texture<'a>) -> Stage<'a> {
@@ -61,6 +76,8 @@ fn init_stage<'a>(texture: &'a Texture<'a>) -> Stage<'a> {
             texture: texture,
         },
         bullets: Vec::new(),
+        enemies: Vec::new(),
+        spawn: 30,
     }
 }
 
@@ -91,6 +108,15 @@ fn render(canvas: &mut WindowCanvas, stage: &Stage) -> Result<(), String> {
         canvas.copy(&bullet.texture, None, Some(bullet_dest))?;
     }
 
+    for enemy in &stage.enemies {
+        let enemy_dest = Rect::new(
+            enemy.x - (enemy.texture.query().width / 2) as i32,
+            enemy.y - (enemy.texture.query().height / 2) as i32,
+            enemy.texture.query().width,
+            enemy.texture.query().height);
+        canvas.copy(&enemy.texture, None, Some(enemy_dest))?;
+    }
+
     canvas.present();
     Ok(())
 }
@@ -111,7 +137,7 @@ fn update(app: &mut App, msg: Msg) {
     }
 }
 
-fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
+fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let _image_context = sdl2::image::init(InitFlag::PNG | InitFlag::JPG)?;
@@ -128,6 +154,7 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
     let texture_creator = canvas.texture_creator();
     let player_texture = texture_creator.load_texture(player_img)?;
     let bullet_texture = texture_creator.load_texture(bullet_img)?;
+    let enemy_texture = texture_creator.load_texture(enemy_img)?;
 
     let mut app = init_app();
     let mut stage = init_stage(&player_texture);
@@ -157,6 +184,9 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
         if stage.player.reload > 0 {
             stage.player.reload -= 1;
         }
+        if stage.spawn > 0 {
+            stage.spawn -= 1;
+        }
 
         if *app.keyboard.get(&Keycode::Up).unwrap_or(&false) {
             stage.player.y = stage.player.y - stage.player.dy;
@@ -173,6 +203,10 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
         if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && stage.player.reload == 0 {
             stage.player.reload = 8;
             stage.bullets.push(fire_bullet(&bullet_texture, &stage.player));
+        }
+        if stage.spawn == 0 && stage.enemies.len() < 5 {
+            stage.spawn = 30;
+            stage.enemies.push(spawn_enemy(&enemy_texture));
         }
 
         for bullet in &mut stage.bullets {

@@ -10,3 +10,6 @@ edition = "2018"
 version = "0.32"
 default-features = false
 features = ["ttf","image"]
+
+[dependencies]
+rand = "0.7.0"
