@@ -45,15 +45,13 @@ fn fire_bullet<'a>(texture: &'a Texture<'a>, player: &Entity) -> Entity<'a> {
     }
 }
 
-struct App<'a> {
-    keyboard: HashMap<Keycode, bool>,
+struct Stage<'a> {
     player: Entity<'a>,
     bullets: Vec<Entity<'a>>,
 }
 
-fn init<'a>(texture: &'a Texture<'a>) -> App<'a> {
-    App {
-        keyboard: HashMap::new(),
+fn init_stage<'a>(texture: &'a Texture<'a>) -> Stage<'a> {
+    Stage {
         player: Entity {
             x: (texture.query().width / 2) as i32,
             y: (texture.query().width / 2) as i32,
@@ -66,15 +64,25 @@ fn init<'a>(texture: &'a Texture<'a>) -> App<'a> {
     }
 }
 
-fn render(canvas: &mut WindowCanvas, app: &App) -> Result<(), String> {
-    let player_dest = Rect::new(
-        app.player.x - (app.player.texture.query().width / 2) as i32,
-        app.player.y - (app.player.texture.query().height / 2) as i32,
-        app.player.texture.query().width,
-        app.player.texture.query().height);
-    canvas.copy(&app.player.texture, None, Some(player_dest))?;
+struct App {
+    keyboard: HashMap<Keycode, bool>,
+}
 
-    for bullet in &app.bullets {
+fn init_app() -> App {
+    App {
+        keyboard: HashMap::new(),
+    }
+}
+
+fn render(canvas: &mut WindowCanvas, stage: &Stage) -> Result<(), String> {
+    let player_dest = Rect::new(
+        stage.player.x - (stage.player.texture.query().width / 2) as i32,
+        stage.player.y - (stage.player.texture.query().height / 2) as i32,
+        stage.player.texture.query().width,
+        stage.player.texture.query().height);
+    canvas.copy(&stage.player.texture, None, Some(player_dest))?;
+
+    for bullet in &stage.bullets {
         let bullet_dest = Rect::new(
             bullet.x - (bullet.texture.query().width / 2) as i32,
             bullet.y - (bullet.texture.query().height / 2) as i32,
@@ -121,7 +129,8 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
     let player_texture = texture_creator.load_texture(player_img)?;
     let bullet_texture = texture_creator.load_texture(bullet_img)?;
 
-    let mut app = init(&player_texture);
+    let mut app = init_app();
+    let mut stage = init_stage(&player_texture);
 
     let mut event_pump = sdl_context.event_pump()?;
     canvas.set_draw_color(Color::RGB(98, 128, 255));
@@ -145,33 +154,33 @@ fn run (player_img: &Path, bullet_img: &Path) -> Result<(), String> {
             }
         }
 
-        if app.player.reload > 0 {
-            app.player.reload -= 1;
+        if stage.player.reload > 0 {
+            stage.player.reload -= 1;
         }
 
         if *app.keyboard.get(&Keycode::Up).unwrap_or(&false) {
-            app.player.y = app.player.y - app.player.dy;
+            stage.player.y = stage.player.y - stage.player.dy;
         }
         if *app.keyboard.get(&Keycode::Down).unwrap_or(&false) {
-            app.player.y = app.player.y + app.player.dy;
+            stage.player.y = stage.player.y + stage.player.dy;
         }
         if *app.keyboard.get(&Keycode::Left).unwrap_or(&false) {
-            app.player.x = app.player.x - app.player.dx;
+            stage.player.x = stage.player.x - stage.player.dx;
         }
         if *app.keyboard.get(&Keycode::Right).unwrap_or(&false) {
-            app.player.x = app.player.x + app.player.dx;
+            stage.player.x = stage.player.x + stage.player.dx;
         }
-        if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && app.player.reload == 0 {
-            app.player.reload = 8;
-            app.bullets.push(fire_bullet(&bullet_texture, &app.player));
+        if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && stage.player.reload == 0 {
+            stage.player.reload = 8;
+            stage.bullets.push(fire_bullet(&bullet_texture, &stage.player));
         }
 
-        for bullet in &mut app.bullets {
+        for bullet in &mut stage.bullets {
             bullet.x += bullet.dx;
             bullet.y += bullet.dy;
         }
-        app.bullets.retain(|bullet| bullet.x <= 800);
-        render(&mut canvas, &app)?;
+        stage.bullets.retain(|bullet| bullet.x <= 800);
+        render(&mut canvas, &stage)?;
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
