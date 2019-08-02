@@ -49,9 +49,9 @@ fn fire_bullet<'a>(texture: &'a Texture<'a>, player: &Entity) -> Entity<'a> {
 
 fn spawn_enemy<'a>(texture: &'a Texture<'a>) -> Entity<'a> {
     Entity {
-        x: rand::thread_rng().gen_range(500, 700),
+        x: rand::thread_rng().gen_range(700, 750),
         y: rand::thread_rng().gen_range(100, 500),
-        dx: 0,
+        dx: rand::thread_rng().gen_range(3, 5),
         dy: 0,
         reload: 0,
         texture: texture,
@@ -181,13 +181,6 @@ fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), St
             }
         }
 
-        if stage.player.reload > 0 {
-            stage.player.reload -= 1;
-        }
-        if stage.spawn > 0 {
-            stage.spawn -= 1;
-        }
-
         if *app.keyboard.get(&Keycode::Up).unwrap_or(&false) {
             stage.player.y = stage.player.y - stage.player.dy;
         }
@@ -200,14 +193,28 @@ fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), St
         if *app.keyboard.get(&Keycode::Right).unwrap_or(&false) {
             stage.player.x = stage.player.x + stage.player.dx;
         }
+
+        if stage.player.reload > 0 {
+            stage.player.reload -= 1;
+        }
         if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && stage.player.reload == 0 {
             stage.player.reload = 8;
             stage.bullets.push(fire_bullet(&bullet_texture, &stage.player));
         }
+
+        if stage.spawn > 0 {
+            stage.spawn -= 1;
+        }
         if stage.spawn == 0 && stage.enemies.len() < 5 {
-            stage.spawn = 30;
+            stage.spawn = 30 + rand::thread_rng().gen_range(0, 30);
             stage.enemies.push(spawn_enemy(&enemy_texture));
         }
+
+        for enemy in &mut stage.enemies {
+            enemy.x -= enemy.dx;
+            enemy.y -= enemy.dy;
+        }
+        stage.enemies.retain(|enemy| enemy.x > -80);
 
         for bullet in &mut stage.bullets {
             bullet.x += bullet.dx;
