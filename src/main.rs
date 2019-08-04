@@ -47,7 +47,7 @@ fn fire_bullet<'a>(texture: &'a Texture<'a>, x: i32, y: i32, side: Side) -> Enti
     Entity {
         x,
         y,
-        dx: 16,
+        dx: 10,
         dy: 0,
         health: 1,
         side,
@@ -67,6 +67,11 @@ fn spawn_enemy<'a>(texture: &'a Texture<'a>) -> Entity<'a> {
         reload: 0,
         texture: texture,
     }
+}
+
+fn collide(e1: &Entity, e2: &Entity) -> bool {
+    (std::cmp::max(e1.x, e2.x) < std::cmp::min(e1.x + e1.texture.query().width as i32, e2.x + e2.texture.query().width as i32)) &&
+    (std::cmp::max(e1.y, e2.y) < std::cmp::min(e1.y + e1.texture.query().height as i32, e2.y + e2.texture.query().height as i32))
 }
 
 struct Stage<'a> {
@@ -227,13 +232,23 @@ fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), St
             enemy.x -= enemy.dx;
             enemy.y -= enemy.dy;
         }
-        stage.enemies.retain(|enemy| enemy.x > -80);
 
         for bullet in &mut stage.bullets {
             bullet.x += bullet.dx;
             bullet.y += bullet.dy;
         }
-        stage.bullets.retain(|bullet| bullet.x <= 800);
+
+        for bullet in &mut stage.bullets {
+            for enemy in &mut stage.enemies {
+                if collide(&bullet, &enemy) {
+                    bullet.health = 0;
+                    enemy.health = 0;
+                }
+            }
+        }
+
+        stage.enemies.retain(|enemy| enemy.x > -80 && enemy.health > 0);
+        stage.bullets.retain(|bullet| bullet.x <= 800 && bullet.health > 0);
 
         render(&mut canvas, &stage)?;
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
