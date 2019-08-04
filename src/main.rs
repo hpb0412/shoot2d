@@ -27,21 +27,30 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
+enum Side {
+    Player,
+    Enemy,
+}
+
 struct Entity<'a> {
     x: i32,
     y: i32,
     dx: i32,
     dy: i32,
+    health: u8,
+    side: Side,
     reload: u8,
     texture: &'a Texture<'a>,
 }
 
-fn fire_bullet<'a>(texture: &'a Texture<'a>, player: &Entity) -> Entity<'a> {
+fn fire_bullet<'a>(texture: &'a Texture<'a>, x: i32, y: i32, side: Side) -> Entity<'a> {
     Entity {
-        x: player.x,
-        y: player.y,
+        x,
+        y,
         dx: 16,
         dy: 0,
+        health: 1,
+        side,
         reload: 0,
         texture: texture,
     }
@@ -53,6 +62,8 @@ fn spawn_enemy<'a>(texture: &'a Texture<'a>) -> Entity<'a> {
         y: rand::thread_rng().gen_range(100, 500),
         dx: rand::thread_rng().gen_range(3, 5),
         dy: 0,
+        health: 1,
+        side: Side::Enemy,
         reload: 0,
         texture: texture,
     }
@@ -72,6 +83,8 @@ fn init_stage<'a>(texture: &'a Texture<'a>) -> Stage<'a> {
             y: (texture.query().width / 2) as i32,
             dx: 4,
             dy: 4,
+            health: 3,
+            side: Side::Player,
             reload: 0,
             texture: texture,
         },
@@ -199,7 +212,7 @@ fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), St
         }
         if *app.keyboard.get(&Keycode::Space).unwrap_or(&false) && stage.player.reload == 0 {
             stage.player.reload = 8;
-            stage.bullets.push(fire_bullet(&bullet_texture, &stage.player));
+            stage.bullets.push(fire_bullet(&bullet_texture, stage.player.x, stage.player.y, Side::Player));
         }
 
         if stage.spawn > 0 {
@@ -221,6 +234,7 @@ fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), St
             bullet.y += bullet.dy;
         }
         stage.bullets.retain(|bullet| bullet.x <= 800);
+
         render(&mut canvas, &stage)?;
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
