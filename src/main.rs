@@ -247,6 +247,13 @@ fn run (player_img: &Path, bullet_img: &Path, enemy_img: &Path) -> Result<(), St
             }
         }
 
+        for enemy in &mut stage.enemies {
+            if collide(&stage.player, &enemy) {
+                enemy.health = 0;
+                break 'running;
+            }
+        }
+
         stage.enemies.retain(|enemy| enemy.x > -80 && enemy.health > 0);
         stage.bullets.retain(|bullet| bullet.x <= 800 && bullet.health > 0);
 
