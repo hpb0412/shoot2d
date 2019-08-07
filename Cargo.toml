@@ -1,5 +1,5 @@
 [package]
-name = "shoot"
+name = "shoot2d"
 version = "0.1.0"
 authors = ["Khoa Do <happyboy0412@gmail.com>"]
 edition = "2018"
